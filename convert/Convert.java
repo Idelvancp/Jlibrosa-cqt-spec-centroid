@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.stream.*;
 
-public class Covert {
+public class Convert {
 
     // Mapeamento das notas
     private static final Map<String, Integer> pitchMap = Map.of(
@@ -84,16 +84,62 @@ public class Covert {
             .toArray();
     }
 
-    // Exemplo de uso
-    public static void main(String[] args) {
+     /**
+     * Converte um número MIDI (inteiro ou fracionário) em frequência (Hz).
+     * @param note número MIDI (pode ser double)
+     * @return frequência em Hz
+     */
+    public static double midiToHz(double note) {
+        return 440.0 * Math.pow(2.0, (note - 69.0) / 12.0);
+    }
+
+    /**
+     * Converte um array de números MIDI em frequências (Hz).
+     * @param notes array de números MIDI (pode conter doubles)
+     * @return array de frequências em Hz
+     */
+    public static double[] midiToHz(double[] notes) {
+        double[] freqs = new double[notes.length];
+        for (int i = 0; i < notes.length; i++) {
+            freqs[i] = midiToHz(notes[i]);
+        }
+        return freqs;
+    }
+
+    // ===============================
+    // NOTE -> HZ
+    // ===============================
+    public static double noteToHz(String note, boolean roundMidi) {
+        double midi = noteToMidi(note, roundMidi).doubleValue();
+        return midiToHz(midi);
+    }
+
+    public static double[] noteToHz(String[] notes, boolean roundMidi) {
+        double[] midiValues = noteToMidi(notes, roundMidi);
+        return midiToHz(midiValues);
+    }
+
+        public static void main(String[] args) {
+        // Testando noteToMidi
         System.out.println(noteToMidi("C", true));      // 12
         System.out.println(noteToMidi("C#3", true));    // 49
         System.out.println(noteToMidi("Bb-1", true));   // 10
         System.out.println(noteToMidi("A!8", true));    // 116
         System.out.println(noteToMidi("C♭𝄫5", true));  // 69
-
         String[] chord = {"C", "E", "G"};
         System.out.println(Arrays.toString(noteToMidi(chord, true))); // [12.0, 16.0, 19.0]
+
+        // Testando midiToHz
+        System.out.println(midiToHz(36));   // ~65.406
+        System.out.println(midiToHz(36.5)); // ~67.351
+
+        double[] notes = {36, 36.5, 37, 47};
+        System.out.println(Arrays.toString(midiToHz(notes)));
+
+        // Testando noteToHz
+        System.out.println(noteToHz("A4", true)); // 440.0
+        System.out.println(Arrays.toString(noteToHz(new String[]{"A3", "A4", "A5"}, true))); 
+        // [220.0, 440.0, 880.0]
     }
 }
 
