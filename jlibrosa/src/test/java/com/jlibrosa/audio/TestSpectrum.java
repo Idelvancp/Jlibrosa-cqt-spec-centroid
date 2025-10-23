@@ -1,6 +1,7 @@
 package com.jlibrosa.audio;
 
 import com.jlibrosa.audio.core.Spectrum;
+import org.apache.commons.math3.complex.Complex;
 import java.util.Locale;
 
 public class TestSpectrum {
@@ -13,31 +14,19 @@ public class TestSpectrum {
         // Instância do JLibrosa
         JLibrosa jLibrosa = new JLibrosa();
 
-        // Carregar o áudio
-        int sr = 22050; // taxa de amostragem padrão do librosa
+        int sr = 22050;
         float[] yFloat = jLibrosa.loadAndRead(wavPath, sr, -1);
 
-        // Converter para double[]
-        double[] y = new double[yFloat.length];
-        for (int i = 0; i < yFloat.length; i++) {
-            y[i] = yFloat[i];
-        }
-
-        // Parâmetros iguais aos do Librosa
         int n_fft = 2048;
-        int hop_length = 512;
-        double power = 2.0; // espectrograma de potência (|X|^2)
-
-        // Calcular espectrograma
-        double[][] spec = Spectrum.spectrogram(y, n_fft, hop_length, power, sr);
+        Complex[][] stft = jLibrosa.generateSTFTFeatures(yFloat, sr, 13, n_fft, 40, 256);        // Carregar o áudio
 
         // Mostrar informações
-        System.out.println("Espectrograma gerado:");
-        System.out.println("Dimensões: " + spec.length + " x " + spec[0].length);
-        System.out.println("Primeiros valores:");
-        for (int i = 0; i < Math.min(5, spec.length); i++) {
-            for (int j = 0; j < Math.min(5, spec[i].length); j++) {
-                System.out.printf("%.6f ", spec[i][j]);
+	System.out.println("STFT (JLibrosa):");
+        System.out.println("Dimensões: " + stft.length + " x " + stft[0].length);
+        for (int i = 0; i < Math.min(5, stft.length); i++) {
+            for (int j = 0; j < Math.min(5, stft[i].length); j++) {
+                Complex c = stft[i][j];
+                System.out.printf("(%.6f, %.6f) ", c.getReal(), c.getImaginary());
             }
             System.out.println();
         }
