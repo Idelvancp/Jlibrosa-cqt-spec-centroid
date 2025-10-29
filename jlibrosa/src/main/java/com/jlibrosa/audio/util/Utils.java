@@ -357,4 +357,119 @@ public class Utils {
     public static String dtypeR2C(Class<?> realType) {
         return dtypeR2C(realType, "complex64");
     }
+
+    public static double[] getWindow(Object window, int Nx, boolean fftbins) {
+        if (window instanceof double[]) {
+            double[] win = (double[]) window;
+            if (win.length == Nx) {
+                return win.clone();
+            } else {
+                throw new IllegalArgumentException(
+                        "Window size mismatch: " + win.length + " != " + Nx);
+            }
+        }
+    
+        if (window instanceof String) {
+            String name = ((String) window).toLowerCase();
+    
+            switch (name) {
+                case "hann":
+                    return hannWindow(Nx, fftbins);
+                case "hamming":
+                    return hammingWindow(Nx, fftbins);
+                default:
+                    throw new IllegalArgumentException("Unsupported window: " + name);
+            }
+        }
+    
+        if (window instanceof Object[]) {
+            Object[] spec = (Object[]) window;
+            String name = (String) spec[0];
+    
+            if (name.equalsIgnoreCase("kaiser")) {
+                double beta = ((Number) spec[1]).doubleValue();
+                return kaiserWindow(Nx, beta, fftbins);
+            } else {
+                throw new IllegalArgumentException("Unsupported tuple window: " + name);
+            }
+        }
+    
+        if (window instanceof Number) {
+            // Compatível com o comportamento do Librosa
+            double beta = ((Number) window).doubleValue();
+            return kaiserWindow(Nx, beta, fftbins);
+        }
+    
+        throw new IllegalArgumentException("Invalid window specification");
+    }
+    
+    // -----------------------------
+    // Funções auxiliares de janela
+    // -----------------------------
+    
+    private static double[] hannWindow(int Nx, boolean fftbins) {
+        double[] win = new double[Nx];
+        double denom = fftbins ? Nx : Nx - 1.0;
+    
+        for (int n = 0; n < Nx; n++) {
+            win[n] = 0.5 * (1.0 - Math.cos(2.0 * Math.PI * n / denom));
+        }
+        return win;
+    }
+    
+    private static double[] hammingWindow(int Nx, boolean fftbins) {
+        double[] win = new double[Nx];
+        double alpha = 0.54;
+        double beta = 1.0 - alpha;
+        double denom = fftbins ? Nx : Nx - 1.0;
+    
+        for (int n = 0; n < Nx; n++) {
+            win[n] = alpha - beta * Math.cos(2.0 * Math.PI * n / denom);
+        }
+        return win;
+    }
+    
+    private static double[] kaiserWindow(int Nx, double beta, boolean fftbins) {
+        double[] win = new double[Nx];
+        double denom = besselI0(beta);
+        double denomNorm = fftbins ? Nx : Nx - 1.0;
+    
+        for (int n = 0; n < Nx; n++) {
+            double ratio = (2.0 * n / denomNorm) - 1.0;
+            ratio = Math.max(-1.0, Math.min(1.0, ratio)); // 🔧 evita NaN
+            win[n] = besselI0(beta * Math.sqrt(1.0 - ratio * ratio)) / denom;
+        }
+        return win;
+    }
+    
+    // -----------------------------
+    // Função de Bessel modificada de ordem 0
+    // -----------------------------
+    private static double besselI0(double x) {
+        double ax = Math.abs(x);
+        double y;
+        if (ax < 3.75) {
+            y = x / 3.75;
+            y *= y;
+            return 1.0 + y * (3.5156229
+                    + y * (3.0899424
+                    + y * (1.2067492
+                    + y * (0.2659732
+                    + y * (0.0360768
+                    + y * 0.0045813)))));
+        } else {
+            y = 3.75 / ax;
+            return Math.exp(ax) / Math.sqrt(ax)
+                    * (0.39894228
+                    + y * (0.01328592
+                    + y * (0.00225319
+                    + y * (-0.00157565
+                    + y * (0.00916281
+                    + y * (-0.02057706
+                    + y * (0.02635537
+                    + y * (-0.01647633
+                    + y * 0.00392377))))))));
+        }
+    }
 }
+
