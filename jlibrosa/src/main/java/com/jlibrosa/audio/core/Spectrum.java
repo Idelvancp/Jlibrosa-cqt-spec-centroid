@@ -109,8 +109,6 @@ public class Spectrum {
 			}
 		}
 		
-		
-
 		if (window == null) {
 			window = "hann";
 		}
@@ -125,6 +123,14 @@ public class Spectrum {
 		System.out.println("fft_window gerado com sucesso! Tamanho = " + fft_window.length);
 		System.out.println("Primeiros valores: " + Arrays.toString(Arrays.copyOf(fft_window, Math.min(5, fft_window.length))));
 
+		//Pad the window out to n_fft size
+		fft_window = Utils.padCenter(fft_window, n_fft);
+		System.out.println("Novo tamanho do fft_window = " + fft_window.length);
+
+		double[] a = {1, 2, 3};
+		double[] p = Utils.padCenter(a, 7, "constant", 0.0);
+		System.out.println(Arrays.toString(p));
+		
 		// Avisos análogos ao librosa:
 		if (center && (pad_mode.equals("wrap") || pad_mode.equals("maximum")
 					|| pad_mode.equals("mean") || pad_mode.equals("median") || pad_mode.equals("minimum"))) {
