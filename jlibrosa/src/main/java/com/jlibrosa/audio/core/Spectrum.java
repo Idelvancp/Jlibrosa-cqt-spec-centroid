@@ -127,9 +127,7 @@ public class Spectrum {
 		fft_window = Utils.padCenter(fft_window, n_fft);
 		System.out.println("Novo tamanho do fft_window = " + fft_window.length);
 
-		double[] a = {1, 2, 3};
-		double[] p = Utils.padCenter(a, 7, "constant", 0.0);
-		System.out.println(Arrays.toString(p));
+		fft_window = Utils.padCenter(fft_window, n_fft);
 		
 		// Avisos análogos ao librosa:
 		if (center && (pad_mode.equals("wrap") || pad_mode.equals("maximum")
@@ -162,6 +160,47 @@ public class Spectrum {
 		// a geração da janela e o framing, e então a FFT.
 		return null;
 	}
+
+	public static Complex[][][] stft(
+	        double[][] y,
+	        Integer n_fft,
+	        Integer hop_length,
+	        Integer win_length,
+	        String window,
+	        boolean center,
+	        String pad_mode
+	) {
+	    if (y == null || y.length == 0)
+	        throw new IllegalArgumentException("Audio must have at least 1 channel");
+	
+	    int channels = y.length;
+	
+	    // Validação: todos os canais devem ter o mesmo tamanho
+	    int n_samples = y[0].length;
+	    for (int c = 1; c < channels; c++) {
+	        if (y[c].length != n_samples) {
+	            throw new IllegalArgumentException("All channels must have the same length");
+	        }
+	    }
+	
+	    Complex[][][] out = new Complex[channels][][];
+	
+	    // Para cada canal, chama a versão mono
+	    for (int c = 0; c < channels; c++) {
+	        out[c] = stft(
+	                y[c],
+	                n_fft,
+	                hop_length,
+	                win_length,
+	                window,
+	                center,
+	                pad_mode
+	        );
+	    }
+	
+	    return out;
+	}
+
 
 }
 
