@@ -273,9 +273,88 @@ public class Spectrum {
 					System.out.printf("%.6f ", yFramesPreTrim[framesToKeep - 1][i]);
 				}
 				System.out.println();
+				
+
+				// Determine if we have any frames that will fit inside the tail pad
+				if (tail_k * hop_length - n_fft / 2 + n_fft <= y.length + n_fft / 2) {
+
+					// Padding equivalente a padding[-1] = (0, n_fft//2)
+					int padLeft = 0;
+					int padRight = n_fft / 2;
+
+					// Slice do sinal: y[(tail_k)*hop_length - n_fft//2 :]
+					int startPost = tail_k * hop_length - n_fft / 2;
+					if (startPost < 0) {
+						startPost = 0; // segurança extra
+					}
+
+					double[] yPostRaw = new double[y.length - startPost];
+					System.arraycopy(y, startPost, yPostRaw, 0, yPostRaw.length);
+
+					// Padding somente à direita
+					double[] y_post = Utils.pad1D(yPostRaw, padLeft, padRight, 0.0);
+
+					// Framing
+					double[][] yFramesPost = Utils.frame(y_post, n_fft, hop_length);
+
+					// How many extra frames do we have from the tail?
+					extra += yFramesPost.length;
+
+					// ================= DEBUG OPCIONAL =================
+					System.out.println("=== DEBUG ELSE (tail padding) ===");
+					System.out.println("Condition passed for tail padding");
+					System.out.println("startPost: " + startPost);
+					System.out.println("yPostRaw.length: " + yPostRaw.length);
+					System.out.println("y_post.length (after pad): " + y_post.length);
+					System.out.println("Frames from tail: " + yFramesPost.length);
+					System.out.println("extra (updated): " + extra);
+
+					System.out.println("Primeiros 10 valores de y_post:");
+					for (int i = 0; i < Math.min(10, y_post.length); i++) {
+						System.out.printf("%.6f ", y_post[i]);
+					}
+					System.out.println();
+
+					System.out.println("Últimos 10 valores de y_post:");
+					for (int i = Math.max(0, y_post.length - 10); i < y_post.length; i++) {
+						System.out.printf("%.6f ", y_post[i]);
+					}
+					System.out.println();
+				}else {
+					// Caso especial: nenhum frame válido no tail
+					double[][] yFramesPost = new double[yFramesPreTrim.length][0];
+
+
+					// ===============================
+					// DEBUG — equivalente ao Librosa
+					// ===============================
+					System.out.println("=== DEBUG ELSE (empty tail frames) ===");
+					System.out.println("Nenhum frame válido no tail");
+					System.out.println("yFramesPreTrim.shape: [" 
+						+ yFramesPreTrim.length + " x " + n_fft + "]");
+					System.out.println("yFramesPost.shape: [" 
+						+ yFramesPost.length + " x " + n_fft + "]");
+				}
+
+
 
 
 			}
+		}else {
+			if (n_fft > y.length) {
+				throw new IllegalArgumentException(
+					String.format(
+						"n_fft=%d is too large for uncentered analysis of input signal of length=%d",
+						n_fft, y.length
+					)
+				);
+			}
+
+			// "Middle" of the signal starts at sample 0
+			int start = 0;
+
+			// We have no extra frames
+			int extra = 0;
 		}
 
 
