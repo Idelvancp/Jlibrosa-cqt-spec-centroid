@@ -471,5 +471,61 @@ public class Utils {
                     + y * 0.00392377))))))));
         }
     }
+
+    public static double[] pad1D(
+            double[] input,
+            int padBefore,
+            int padAfter,
+            double constantValue
+    ) {
+        int newLength = padBefore + input.length + padAfter;
+        double[] output = new double[newLength];
+
+        // Preenche tudo com o valor constante
+        for (int i = 0; i < newLength; i++) {
+            output[i] = constantValue;
+        }
+
+        // Copia o array original para o centro
+        System.arraycopy(input, 0, output, padBefore, input.length);
+
+        return output;
+    }
+
+    public static double[][] pad2D(
+        double[][] input,
+        int padTop,
+        int padBottom,
+        int padLeft,
+        int padRight,
+        double constantValue
+    ) {
+        int originalRows = input.length;
+        int originalCols = input[0].length;
+
+        int newRows = padTop + originalRows + padBottom;
+        int newCols = padLeft + originalCols + padRight;
+
+        double[][] output = new double[newRows][newCols];
+
+        // Preenche com valor constante
+        for (int i = 0; i < newRows; i++) {
+            for (int j = 0; j < newCols; j++) {
+                output[i][j] = constantValue;
+            }
+        }
+
+        // Copia matriz original
+        for (int i = 0; i < originalRows; i++) {
+            System.arraycopy(
+                    input[i], 0,
+                    output[i + padTop], padLeft,
+                    originalCols
+            );
+        }
+
+        return output;
+    }
+
 }
 

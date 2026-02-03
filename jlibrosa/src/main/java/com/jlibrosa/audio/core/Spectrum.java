@@ -5,6 +5,8 @@ import org.apache.commons.math3.complex.Complex;
 import com.jlibrosa.audio.util.Utils;
 import com.jlibrosa.audio.core.Spectrum;
 import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 
 
 public class Spectrum {
@@ -129,16 +131,151 @@ public class Spectrum {
 
 		fft_window = Utils.padCenter(fft_window, n_fft);
 		
-		// Avisos análogos ao librosa:
-		if (center && (pad_mode.equals("wrap") || pad_mode.equals("maximum")
-					|| pad_mode.equals("mean") || pad_mode.equals("median") || pad_mode.equals("minimum"))) {
-			throw new IllegalArgumentException("pad_mode='" + pad_mode + "' is not supported by this STFT implementation.");
-					}
 
-		if (center && n_fft > y.length) {
-		    System.err.printf("Warning: n_fft=%d is larger than input length=%d%n", n_fft, y.length);
-		} else if (!center && n_fft > y.length) {
-    			throw new IllegalArgumentException(String.format( "n_fft=%d is too large for uncentered analysis of input signal of length=%d", n_fft, y.length));
+		
+		if (center) {
+
+			// Avisos análogos ao librosa:
+			if (center && (pad_mode.equals("wrap") || pad_mode.equals("maximum")
+						|| pad_mode.equals("mean") || pad_mode.equals("median") || pad_mode.equals("minimum"))) {
+				throw new IllegalArgumentException("pad_mode='" + pad_mode + "' is not supported by this STFT implementation.");
+						}
+
+			if (center && n_fft > y.length) {
+				System.err.printf("Warning: n_fft=%d is larger than input length=%d%n", n_fft, y.length);
+			} else if (!center && n_fft > y.length) {
+					throw new IllegalArgumentException(String.format( "n_fft=%d is too large for uncentered analysis of input signal of length=%d", n_fft, y.length));
+			}
+			
+			int ndim = 1; // hoje é mono, mas pode virar 2 depois
+			List<int[]> padding = new ArrayList<>();
+
+			for (int i = 0; i < ndim; i++) {
+				padding.add(new int[]{0, 0});
+			}
+
+			int start_k = (int) Math.ceil((double) (n_fft / 2) / hop_length);
+
+			int tail_k = (y.length + (n_fft / 2) - n_fft) / hop_length + 1;
+
+			
+			if (tail_k <= start_k) {
+				// Caso simples: padding simétrico total (equivalente ao np.pad do librosa)
+				int start;
+			    int extra;
+				start = 0;
+				extra = 0;
+				y = Utils.pad1D(y, n_fft / 2, n_fft / 2, 0.0);
+
+         		// 🔍 DEBUG TEMPORÁRIO
+				System.out.println("=== DEBUG PAD1D ===");
+				System.out.println("Original length (sem pad): " + (y.length - n_fft));
+				System.out.println("Padded length: " + y.length);
+				System.out.println("Pad left/right: " + (n_fft / 2));
+
+				System.out.println("Primeiros 10 valores:");
+				for (int i = 0; i < 10; i++) {
+					System.out.printf("%.6f ", y[i]);
+				}
+				System.out.println();
+
+				System.out.println("Últimos 10 valores:");
+				for (int i = y.length - 10; i < y.length; i++) {
+					System.out.printf("%.6f ", y[i]);
+				}
+				System.out.println();
+			}else {
+				// Caso geral: padding parcial (librosa otimizado)
+				System.out.println("=== DEBUG PAD1D Else início ===");
+
+
+				// "Middle" do sinal começa aqui
+				int start;
+				start = start_k * hop_length - n_fft / 2;
+
+				// Calcula o fim do trecho inicial
+				int end = (start_k - 1) * hop_length - n_fft / 2 + n_fft + 1;
+
+				// Recorta o início do sinal
+				double[] yPreRaw = Arrays.copyOfRange(y, 0, end);
+
+				// Padding somente à esquerda
+				double[] y_pre = Utils.pad1D(yPreRaw, n_fft / 2, 0, 0.0);
+
+				// y_pre será usado para gerar os primeiros frames
+				// 🔍 DEBUG ELSE (equivalente ao debug do librosa)
+				System.out.println("=== DEBUG ELSE (partial padding) ===");
+				System.out.println("y.length (original): " + y.length);
+				System.out.println("start_k: " + start_k);
+				System.out.println("hop_length: " + hop_length);
+				System.out.println("n_fft: " + n_fft);
+
+				System.out.println("start (offset): " + start);
+				System.out.println("end (raw slice): " + end);
+
+				System.out.println("yPreRaw.length: " + yPreRaw.length);
+				System.out.println("y_pre.length (after pad): " + y_pre.length);
+				System.out.println("Expected y_pre.length: " + (yPreRaw.length + n_fft / 2));
+
+				System.out.println("Pad left: " + (n_fft / 2) + " | Pad right: 0");
+
+				System.out.println("Primeiros 10 valores de y_pre:");
+				for (int i = 0; i < 10; i++) {
+					System.out.printf("%.6f ", y_pre[i]);
+				}
+				System.out.println();
+
+				System.out.println("Valores em torno da transição pad → sinal:");
+				int t = n_fft / 2;
+				for (int i = t - 5; i < t + 5; i++) {
+					System.out.printf("%.6f ", y_pre[i]);
+				}
+				System.out.println();
+
+				// ===============================
+				// Continuação do ELSE (Librosa)
+				// ===============================
+
+				// Framing do sinal parcialmente padded
+				double[][] yFramesPre = Utils.frame(y_pre, n_fft, hop_length);
+
+				// Trim para manter apenas os primeiros start_k frames
+				int framesToKeep = Math.min(start_k, yFramesPre.length);
+				double[][] yFramesPreTrim = new double[framesToKeep][n_fft];
+
+				for (int i = 0; i < framesToKeep; i++) {
+					yFramesPreTrim[i] = yFramesPre[i];
+				}
+
+				// Quantidade de frames extras vindos do "head"
+				int extra = yFramesPreTrim.length;
+
+				// ===============================
+				// DEBUG — equivalente ao Librosa
+				// ===============================
+				System.out.println("=== DEBUG ELSE (framing pre) ===");
+				System.out.println("y_pre.length: " + y_pre.length);
+				System.out.println("n_fft: " + n_fft);
+				System.out.println("hop_length: " + hop_length);
+				System.out.println("Total frames (before trim): " + yFramesPre.length);
+				System.out.println("start_k: " + start_k);
+				System.out.println("Frames kept (after trim): " + yFramesPreTrim.length);
+				System.out.println("extra: " + extra);
+
+				System.out.println("Primeiro frame (primeiros 10 valores):");
+				for (int i = 0; i < 10; i++) {
+					System.out.printf("%.6f ", yFramesPreTrim[0][i]);
+				}
+				System.out.println();
+
+				System.out.println("Último frame (últimos 10 valores):");
+				for (int i = n_fft - 10; i < n_fft; i++) {
+					System.out.printf("%.6f ", yFramesPreTrim[framesToKeep - 1][i]);
+				}
+				System.out.println();
+
+
+			}
 		}
 
 

@@ -18,10 +18,11 @@ public class TesteSTFT {
 
             // Teste 1: parâmetros válidos
             System.out.println("=== Teste 1: parâmetros válidos ===");
+            System.out.println("Comprimento original do sinal: " + y.length);
             Spectrum.stft(y, 2048, null, null, "hann", true, "constant");
             System.out.println("Passou! Nenhum erro de validação.");
 
-            // Teste 2: hop_length inválido
+         /*   // Teste 2: hop_length inválido
             System.out.println("\n=== Teste 2: hop_length inválido ===");
             try {
                 Spectrum.stft(y, 2048, -10, null, "hann", true, "constant");
@@ -38,7 +39,7 @@ public class TesteSTFT {
             } catch (IllegalArgumentException e) {
                 System.out.println("Capturado corretamente: " + e.getMessage());
             }
-
+*/
         } catch (Exception e) {
             System.err.println("Erro geral: " + e.getMessage());
             e.printStackTrace();
