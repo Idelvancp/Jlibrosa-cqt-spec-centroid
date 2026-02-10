@@ -2,6 +2,7 @@ package com.jlibrosa.audio.core;
 
 import com.jlibrosa.audio.JLibrosa;
 import org.apache.commons.math3.complex.Complex;
+import org.jtransforms.fft.DoubleFFT_1D;
 import com.jlibrosa.audio.util.Utils;
 import com.jlibrosa.audio.core.Spectrum;
 import java.util.Arrays;
@@ -131,7 +132,8 @@ public class Spectrum {
 
 		fft_window = Utils.padCenter(fft_window, n_fft);
 		
-
+		int start;
+	    int extra;
 		
 		if (center) {
 
@@ -161,8 +163,6 @@ public class Spectrum {
 			
 			if (tail_k <= start_k) {
 				// Caso simples: padding simétrico total (equivalente ao np.pad do librosa)
-				int start;
-			    int extra;
 				start = 0;
 				extra = 0;
 				y = Utils.pad1D(y, n_fft / 2, n_fft / 2, 0.0);
@@ -190,7 +190,6 @@ public class Spectrum {
 
 
 				// "Middle" do sinal começa aqui
-				int start;
 				start = start_k * hop_length - n_fft / 2;
 
 				// Calcula o fim do trecho inicial
@@ -248,7 +247,7 @@ public class Spectrum {
 				}
 
 				// Quantidade de frames extras vindos do "head"
-				int extra = yFramesPreTrim.length;
+				extra = yFramesPreTrim.length;
 
 				// ===============================
 				// DEBUG — equivalente ao Librosa
@@ -351,11 +350,43 @@ public class Spectrum {
 			}
 
 			// "Middle" of the signal starts at sample 0
-			int start = 0;
+			start = 0;
 
 			// We have no extra frames
-			int extra = 0;
+			extra = 0;
 		}
+
+		DoubleFFT_1D fft = new DoubleFFT_1D(n_fft);
+
+		// No librosa, o dtype é passado como parâmetro com valor default none.
+		// Aqui, não passamos dtype como parâmetro, sempre consideramos que o valor deste é none.
+		// if dtype is None:
+        //   dtype = util.dtype_r2c(y.dtype)
+		String dtype = Utils.dtypeR2C(double.class); // "complex128"
+
+		// Aqui só é considerado aúdio mono.		
+		double[] ySliced = Arrays.copyOfRange(y, start, y.length);
+		double[][] yFrames = Utils.frame(ySliced, n_fft, hop_length);
+
+		int freqBins = 1 + n_fft / 2;
+		int totalFrames = yFrames.length + extra;
+
+		Complex[][] stftMatrix = new Complex[freqBins][totalFrames];
+
+		int nFrames = yFrames.length;
+
+
+
+		System.out.println("=== DEBUG SHAPE STFT ===");
+		System.out.println("n_fft: " + n_fft);
+		System.out.println("freqBins (1 + n_fft/2): " + freqBins);
+		System.out.println("Frames centrais (yFrames.length): " + nFrames);
+		System.out.println("Frames extras (extra): " + extra);
+		System.out.println("Total frames (shape[-1]): " + totalFrames);
+		System.out.println("STFT shape: [" + freqBins + " x " + totalFrames + "]");
+
+
+
 
 
 		// Preparação: converter double[] para float[] caso necessário por libs externas.

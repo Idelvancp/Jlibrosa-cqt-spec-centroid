@@ -2,7 +2,7 @@ package com.jlibrosa.audio;
 
 import com.jlibrosa.audio.core.Spectrum;
 
-public class TesteSTFT {
+public class TestSTFT {
     public static void main(String[] args) {
         try {
             // Cria um sinal de áudio simples (exemplo: uma senoide)
