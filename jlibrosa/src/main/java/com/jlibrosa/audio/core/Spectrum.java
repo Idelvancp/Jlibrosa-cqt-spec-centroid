@@ -371,7 +371,16 @@ public class Spectrum {
 		int freqBins = 1 + n_fft / 2;
 		int totalFrames = yFrames.length + extra;
 
+
+     	// Usando array bidimensional [frequencias][frames]
 		Complex[][] stftMatrix = new Complex[freqBins][totalFrames];
+
+		// Inicializando com zeros
+		for (int i = 0; i < freqBins; i++) {
+			for (int j = 0; j < totalFrames; j++) {
+				stftMatrix[i][j] = Complex.ZERO;
+			}
+		}
 
 		int nFrames = yFrames.length;
 
