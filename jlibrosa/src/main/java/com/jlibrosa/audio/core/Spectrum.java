@@ -134,6 +134,9 @@ public class Spectrum {
 		
 		int start;
 	    int extra;
+
+		double[][] yFramesPreTrim = null;
+		double[][] yFramesPost = null;
 		
 		if (center) {
 
@@ -240,7 +243,7 @@ public class Spectrum {
 
 				// Trim para manter apenas os primeiros start_k frames
 				int framesToKeep = Math.min(start_k, yFramesPre.length);
-				double[][] yFramesPreTrim = new double[framesToKeep][n_fft];
+				yFramesPreTrim = new double[framesToKeep][n_fft];
 
 				for (int i = 0; i < framesToKeep; i++) {
 					yFramesPreTrim[i] = yFramesPre[i];
@@ -294,7 +297,7 @@ public class Spectrum {
 					double[] y_post = Utils.pad1D(yPostRaw, padLeft, padRight, 0.0);
 
 					// Framing
-					double[][] yFramesPost = Utils.frame(y_post, n_fft, hop_length);
+					yFramesPost = Utils.frame(y_post, n_fft, hop_length);
 
 					// How many extra frames do we have from the tail?
 					extra += yFramesPost.length;
@@ -321,7 +324,7 @@ public class Spectrum {
 					System.out.println();
 				}else {
 					// Caso especial: nenhum frame válido no tail
-					double[][] yFramesPost = new double[yFramesPreTrim.length][0];
+					yFramesPost = new double[yFramesPreTrim.length][0];
 
 
 					// ===============================
@@ -334,10 +337,6 @@ public class Spectrum {
 					System.out.println("yFramesPost.shape: [" 
 						+ yFramesPost.length + " x " + n_fft + "]");
 				}
-
-
-
-
 			}
 		}else {
 			if (n_fft > y.length) {
@@ -395,9 +394,110 @@ public class Spectrum {
 		System.out.println("STFT shape: [" + freqBins + " x " + totalFrames + "]");
 
 
+		// ===============================
+		// OFFSETS
+		// ===============================
+		int offStart = 0;
+		int offEnd = 0;
 
+		// ===============================
+		// FILL WARM-UP (HEAD)
+		// ===============================
+		if (center && yFramesPreTrim != null && yFramesPreTrim.length > 0) {
 
+			offStart = yFramesPreTrim.length;
 
+			System.out.println("=== DEBUG FILL WARMUP ===");
+			System.out.println("offStart (extra frames): " + offStart);
+
+			for (int frameIndex = 0; frameIndex < offStart; frameIndex++) {
+
+				double[] frame = yFramesPreTrim[frameIndex];
+
+				double[] windowed = new double[n_fft];
+				for (int i = 0; i < n_fft; i++) {
+					windowed[i] = frame[i] * fft_window[i];
+				}
+
+				double[] fftBuffer = new double[2 * n_fft];
+				System.arraycopy(windowed, 0, fftBuffer, 0, n_fft);
+
+				fft.realForwardFull(fftBuffer);
+
+				for (int k = 0; k < freqBins; k++) {
+					stftMatrix[k][frameIndex] =
+						new Complex(fftBuffer[2 * k], fftBuffer[2 * k + 1]);
+				}
+			}
+		}
+
+		// ===============================
+		// FILL TAIL
+		// ===============================
+		if (center && yFramesPost != null && yFramesPost.length > 0) {
+
+			offEnd = yFramesPost.length;
+			int startCol = totalFrames - offEnd;
+
+			System.out.println("=== DEBUG FILL TAIL ===");
+			System.out.println("offEnd (tail frames): " + offEnd);
+
+			for (int frameIndex = 0; frameIndex < offEnd; frameIndex++) {
+
+				double[] frame = yFramesPost[frameIndex];
+
+				double[] windowed = new double[n_fft];
+				for (int i = 0; i < n_fft; i++) {
+					windowed[i] = frame[i] * fft_window[i];
+				}
+
+				double[] fftBuffer = new double[2 * n_fft];
+				System.arraycopy(windowed, 0, fftBuffer, 0, n_fft);
+
+				fft.realForwardFull(fftBuffer);
+
+				int colIndex = startCol + frameIndex;
+
+				for (int k = 0; k < freqBins; k++) {
+					stftMatrix[k][colIndex] =
+						new Complex(fftBuffer[2 * k], fftBuffer[2 * k + 1]);
+				}
+			}
+		}
+
+		// ===============================
+		// FILL MIDDLE (FRAMES CENTRAIS)
+		// ===============================
+		int middleStart = offStart;
+
+		for (int frameIndex = 0; frameIndex < yFrames.length; frameIndex++) {
+
+			int colIndex = middleStart + frameIndex;
+
+			double[] frame = yFrames[frameIndex];
+
+			double[] windowed = new double[n_fft];
+			for (int i = 0; i < n_fft; i++) {
+				windowed[i] = frame[i] * fft_window[i];
+			}
+
+			double[] fftBuffer = new double[2 * n_fft];
+			System.arraycopy(windowed, 0, fftBuffer, 0, n_fft);
+
+			fft.realForwardFull(fftBuffer);
+
+			for (int k = 0; k < freqBins; k++) {
+				stftMatrix[k][colIndex] =
+					new Complex(fftBuffer[2 * k], fftBuffer[2 * k + 1]);
+			}
+		}
+
+		
+		System.out.println("freqBins esperado: " + (1 + n_fft/2));
+		System.out.println("freqBins real: " + stftMatrix.length);
+
+		System.out.println("frames esperados: " + totalFrames);
+		System.out.println("frames real: " + stftMatrix[0].length);
 		// Preparação: converter double[] para float[] caso necessário por libs externas.
 		// float[] yFloat = new float[y.length];
 		// for (int i = 0; i < y.length; i++) yFloat[i] = (float) y[i];
@@ -414,7 +514,7 @@ public class Spectrum {
 
 		// Por enquanto, retornamos null como placeholder — na próxima mensagem eu implemento
 		// a geração da janela e o framing, e então a FFT.
-		return null;
+		return stftMatrix;
 	}
 
 	public static Complex[][][] stft(
