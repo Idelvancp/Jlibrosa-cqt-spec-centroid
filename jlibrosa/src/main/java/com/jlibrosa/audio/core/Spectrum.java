@@ -23,7 +23,8 @@ public class Spectrum {
 	 * @return double[][] Spectrogram matrix
 	 * @throws Exception
 	 */
-	public static double[][] spectrogram(double[] y,
+	public static double[][] spectrogramOld(
+		    double[] y,
 			int n_fft,
 			int hop_length,
 			double power,
@@ -60,6 +61,100 @@ public class Spectrum {
 		}
 
 		return specOut;
+	}
+	
+	public static class SpectrogramResult {
+		public double[][] S;
+		public int n_fft;
+
+		public SpectrogramResult(double[][] S, int n_fft) {
+			this.S = S;
+			this.n_fft = n_fft;
+		}
+	}
+
+	public static SpectrogramResult spectrogram(
+			double[] y,
+			double[][] S,
+			Integer n_fft,
+			Integer hop_length,
+			double power,
+			Integer win_length,
+			String window,
+			boolean center,
+			String pad_mode
+	) {
+
+		// ========================================
+		// Caso 1: S já fornecido
+		// ========================================
+		if (S != null) {
+			int freqBins = S.length;
+
+			if (n_fft == null || (n_fft / 2 + 1) != freqBins) {
+				n_fft = 2 * (freqBins - 1);
+			}
+
+			return new SpectrogramResult(S, n_fft);
+		}
+
+		// ========================================
+		// Validações (igual ao Python)
+		// ========================================
+		if (n_fft == null) {
+			throw new IllegalArgumentException("Unable to compute spectrogram with n_fft=null");
+		}
+
+		if (y == null) {
+			throw new IllegalArgumentException("Input signal must be provided to compute a spectrogram");
+		}
+
+		// Defaults iguais ao Librosa
+		if (win_length == null) {
+			win_length = n_fft;
+		}
+
+		if (hop_length == null) {
+			hop_length = n_fft / 4; // padrão do Librosa
+		}
+
+		if (window == null) {
+			window = "hann";
+		}
+
+		if (pad_mode == null) {
+			pad_mode = "constant";
+		}
+
+		// ========================================
+		// Chamada do SEU STFT (já fiel ao Python)
+		// ========================================
+		Complex[][] stftMatrix = stft(
+				y,
+				n_fft,
+				hop_length,
+				win_length,
+				window,
+				center,
+				pad_mode
+		);
+
+		int rows = stftMatrix.length;
+		int cols = stftMatrix[0].length;
+
+		double[][] specOut = new double[rows][cols];
+
+		// ========================================
+		// |STFT| ** power  (igual ao Python)
+		// ========================================
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				double mag = stftMatrix[i][j].abs();
+				specOut[i][j] = Math.pow(mag, power);
+			}
+		}
+
+		return new SpectrogramResult(specOut, n_fft);
 	}
 
 	/**

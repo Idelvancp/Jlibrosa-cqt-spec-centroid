@@ -1,6 +1,8 @@
 package com.jlibrosa.audio;
 import org.apache.commons.math3.complex.Complex;
 import com.jlibrosa.audio.core.Spectrum;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
 public class TestSTFTSENO {
     public static void main(String[] args) {
@@ -29,6 +31,25 @@ public class TestSTFTSENO {
                 true,
                 "constant"
             );
+
+            PrintWriter writer = new PrintWriter(new FileWriter("stft_java.csv"));
+
+            int freqBins = stftMatrix.length;
+            int frames = stftMatrix[0].length;
+
+            for (int k = 0; k < freqBins; k++) {
+                for (int t = 0; t < frames; t++) {
+                    double mag = stftMatrix[k][t].abs(); // magnitude
+                    writer.print(mag);
+
+                    if (t < frames - 1) writer.print(",");
+                }
+                writer.println();
+            }
+
+            writer.close();
+
+            System.out.println("STFT exportada para stft_java.csv");
 
             // 3️⃣ TESTE DO BIN ESPERADO
             int expectedBin = (int)Math.round(freq * n_fft / sr);
