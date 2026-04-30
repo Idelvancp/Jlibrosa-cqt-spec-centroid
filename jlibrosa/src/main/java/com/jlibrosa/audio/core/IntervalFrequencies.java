@@ -2,6 +2,12 @@ package com.jlibrosa.audio.core;
 import com.jlibrosa.audio.core.Spectrum;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.Map; // já tinha faltado antes
 
 public class IntervalFrequencies {
 
@@ -44,7 +50,7 @@ public class IntervalFrequencies {
                     break;
 
                 case "pythagorean":
-                    ratios = pythagoreanIntervals(binsPerOctave, sort);
+                    ratios = (double[]) pythagoreanIntervals(binsPerOctave, sort, false);
                     break;
 
                 case "ji3":
@@ -112,18 +118,6 @@ public class IntervalFrequencies {
 
         return allRatios;
     }
-
-    // ---------------------------------------------------
-    // STUBS - implementar igual ao librosa
-    // ---------------------------------------------------
-
-    public static double[] pythagoreanIntervals(int binsPerOctave, boolean sort) {
-        throw new UnsupportedOperationException("Implementar pythagoreanIntervals()");
-    }
-
-
-
-
 
         // ---------------- CACHE ----------------
 
