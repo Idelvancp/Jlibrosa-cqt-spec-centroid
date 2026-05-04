@@ -1,11 +1,23 @@
 package com.jlibrosa.audio.core;
 import com.jlibrosa.audio.core.Convert;
 import com.jlibrosa.audio.core.Pitch;
+import com.jlibrosa.audio.core.IntervalFrequencies;
 import com.jlibrosa.audio.util.Utils;
 import org.apache.commons.math3.complex.Complex;
 import java.util.Collection;
 
 public class Constantq {
+
+	private static final Map<Integer, double[]> BW_CACHE = new HashMap<>();
+
+	private static double[] etRelativeBw(int binsPerOctave) {
+		return BW_CACHE.computeIfAbsent(binsPerOctave, b -> {
+			double r = Math.pow(2.0, 1.0 / b);
+			double alpha = (Math.pow(r, 2) - 1.0) / (Math.pow(r, 2) + 1.0);
+			return new double[]{alpha};
+		});
+	}
+
 	public static Complex[][] cqt(
 	    double[] y,
 	    int sr,
@@ -71,7 +83,40 @@ public class Constantq {
 		}
 
 		fmin = fmin * Math.pow(2.0, tuning / (double) binsPerOctave);
-	    return null;
+
+		double[] freqs = IntervalFrequencies.intervalFrequencies(
+        nBins,          // int
+        fmin,           // double
+        intervals,      // String ou double[]
+        binsPerOctave,  // int
+        0.0,            // tuning (no Python default = 0)
+        true            // sort
+		);
+	    
+		if (freqs.length < binsPerOctave) {
+			throw new IllegalArgumentException("freqs menor que binsPerOctave");
+		}
+
+		double fmaxT = Double.NEGATIVE_INFINITY;
+
+		for (int i = freqs.length - binsPerOctave; i < freqs.length; i++) {
+			if (freqs[i] > fmaxT) {
+				fmaxT = freqs[i];
+			}
+		}
+
+		double[] alpha;
+
+		if (nBins == 1) {
+			alpha = etRelativeBw(binsPerOctave);
+		} else {
+			// você ainda precisa implementar isso
+			// alpha = relativeBandwidth(freqs);
+			alpha = null;
+		}
+
+
+		return null;
 	}
 
 }

@@ -19,6 +19,7 @@ public class TestIntervalFrequencies {
         );
 
         System.out.println(Arrays.toString(freqs));
+        
         } catch (Exception e) {
             System.err.println("Erro geral: " + e.getMessage());
             e.printStackTrace();
