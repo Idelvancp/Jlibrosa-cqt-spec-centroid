@@ -3,8 +3,11 @@ import com.jlibrosa.audio.core.Convert;
 import com.jlibrosa.audio.core.Pitch;
 import com.jlibrosa.audio.core.IntervalFrequencies;
 import com.jlibrosa.audio.util.Utils;
+import com.jlibrosa.audio.Filters;
 import org.apache.commons.math3.complex.Complex;
 import java.util.Collection;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Constantq {
 
@@ -110,12 +113,42 @@ public class Constantq {
 		if (nBins == 1) {
 			alpha = etRelativeBw(binsPerOctave);
 		} else {
-			// você ainda precisa implementar isso
-			// alpha = relativeBandwidth(freqs);
-			alpha = null;
+			alpha = Filters.relativeBandwidth(freqs);
 		}
 
+		Filters.WaveletLengthsResult result =
+        Filters.waveletLengths(
+                freqs,
+                sr,
+                window,
+                filterScale,
+                gamma,
+                alpha
+        );
 
+		double[] lengths = result.lengths;
+		double filterCutoff = result.fCutoff;
+
+		// =====================================================
+		// Nyquist check
+		// =====================================================
+
+		double nyquist = sr / 2.0;
+
+		if (filterCutoff > nyquist) {
+
+			throw new IllegalArgumentException(
+					"Wavelet basis with max frequency="
+					+ filterCutoff
+					+ " would exceed the Nyquist frequency="
+					+ nyquist
+					+ ". Try reducing the number of frequency bins."
+			);
+		}
+
+		if (resType == null) {
+			resType = "soxr_hq";
+		}
 		return null;
 	}
 
