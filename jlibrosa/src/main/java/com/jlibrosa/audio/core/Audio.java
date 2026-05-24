@@ -9,11 +9,15 @@ public class Audio {
      * fix = true
      * scale = false
      */
+     /**
+     * Resample com parâmetros padrão.
+     */
     public static double[] resample(
             double[] y,
             double origSr,
             double targetSr
     ) {
+
         return resample(
                 y,
                 origSr,
@@ -24,105 +28,91 @@ public class Audio {
         );
     }
 
-    /**
-     * Resample com tipo customizado.
-     */
-    public static double[] resample(
-            double[] y,
-            double origSr,
-            double targetSr,
-            String resType
-    ) {
-        return resample(
-                y,
-                origSr,
-                targetSr,
-                resType,
-                true,
-                false
-        );
-    }
+    // =========================================================
+    // Implementação principal
+    // =========================================================
 
     /**
      * Implementação principal do resample.
-     */
-    public static double[] resample(
-            double[] y,
-            double origSr,
-            double targetSr,
-            String resType,
-            boolean fix,
-            boolean scale
-    ) {
-
-        // Validação do áudio
-        Utils.validAudio(y);
-
-        // Validação dos sample rates
-        if (origSr <= 0) {
-            throw new Utils.ParameterError(
-                    "origSr must be positive"
-            );
-        }
-
-        if (targetSr <= 0) {
-            throw new Utils.ParameterError(
-                    "targetSr must be positive"
-            );
-        }
-
-        // Evita processamento desnecessário
-        if (origSr == targetSr) {
-            return y.clone();
-        }
-
-        // Razão de conversão
-        double ratio = targetSr / origSr;
-
-        int nSamples = (int) Math.ceil(y.length * ratio);
-
-        return y;
-    }
-
-
-
-    // Implementação equivalente ao Soxr 
-    // Número de amostras usadas no kernel sinc
-    // Maior = melhor qualidade e mais CPU
-    private static final int FILTER_WIDTH = 16;
-
-    /**
-     * Resample estilo soxr_hq simplificado.
+     *
+     * Equivalente aproximado ao:
+     *
+     * librosa.audio.resample(...)
      */
     public static double[] resample(
             double[] input,
             double inRate,
             double outRate,
-            String quality
+            String quality,
+            boolean fix,
+            boolean scale
     ) {
+
+        // -----------------------------------------
+        // Validação
+        // -----------------------------------------
+
+        Utils.validAudio(input);
+
+        if (inRate <= 0) {
+            throw new Utils.ParameterError(
+                    "origSr must be positive"
+            );
+        }
+
+        if (outRate <= 0) {
+            throw new Utils.ParameterError(
+                    "targetSr must be positive"
+            );
+        }
 
         if (input == null || input.length == 0) {
             return new double[0];
         }
 
-        if (inRate <= 0 || outRate <= 0) {
-            throw new IllegalArgumentException(
-                    "Sample rates must be positive"
-            );
+        // -----------------------------------------
+        // Sem necessidade de resample
+        // -----------------------------------------
+
+        if (inRate == outRate) {
+            return input.clone();
         }
+
+        // -----------------------------------------
+        // Razão de conversão
+        // -----------------------------------------
 
         double ratio = outRate / inRate;
 
-        int outputLength = (int) Math.ceil(input.length * ratio);
+        int outputLength;
+
+        if (fix) {
+            outputLength =
+                    (int) Math.ceil(input.length * ratio);
+        } else {
+            outputLength =
+                    (int) (input.length * ratio);
+        }
+
+        if (outputLength <= 0) {
+            outputLength = 1;
+        }
 
         double[] output = new double[outputLength];
 
-        // Ajusta largura do filtro conforme qualidade
+        // -----------------------------------------
+        // Ajusta qualidade
+        // -----------------------------------------
+
         int filterWidth = getFilterWidth(quality);
+
+        // -----------------------------------------
+        // Windowed sinc interpolation
+        // -----------------------------------------
 
         for (int i = 0; i < outputLength; i++) {
 
-            // posição no sinal original
+            // posição correspondente no sinal original
             double sourceIndex = i / ratio;
 
             int center = (int) Math.floor(sourceIndex);
@@ -130,27 +120,27 @@ public class Audio {
             double sum = 0.0;
             double norm = 0.0;
 
-            // sinc windowed interpolation
             for (int k = -filterWidth; k <= filterWidth; k++) {
 
                 int sampleIndex = center + k;
 
-                if (sampleIndex < 0 || sampleIndex >= input.length) {
+                if (sampleIndex < 0
+                        || sampleIndex >= input.length) {
                     continue;
                 }
 
-                double distance = sourceIndex - sampleIndex;
+                double distance =
+                        sourceIndex - sampleIndex;
 
                 // sinc
-                double sinc = sinc(distance);
+                double sincValue = sinc(distance);
 
                 // janela Hann
-                double window = hannWindow(
-                        distance,
-                        filterWidth
-                );
+                double window =
+                        hannWindow(distance, filterWidth);
 
-                double weight = sinc * window;
+                double weight =
+                        sincValue * window;
 
                 sum += input[sampleIndex] * weight;
                 norm += weight;
@@ -158,6 +148,20 @@ public class Audio {
 
             if (norm != 0.0) {
                 output[i] = sum / norm;
+            }
+        }
+
+        // -----------------------------------------
+        // scale=True no librosa
+        // -----------------------------------------
+
+        if (scale) {
+
+            double gain =
+                    Math.sqrt(outRate / inRate);
+
+            for (int i = 0; i < output.length; i++) {
+                output[i] *= gain;
             }
         }
 
