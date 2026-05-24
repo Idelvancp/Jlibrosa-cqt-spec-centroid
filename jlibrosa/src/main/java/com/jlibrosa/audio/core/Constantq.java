@@ -152,4 +152,54 @@ public class Constantq {
 		return null;
 	}
 
+	    /**
+     * Retorna quantas vezes o inteiro x pode ser dividido por 2.
+     * Retorna 0 para inteiros não positivos.
+     */
+    public static int numTwoFactors(int x) {
+        if (x <= 0) {
+            return 0;
+        }
+
+        int numTwos = 0;
+
+        while (x % 2 == 0) {
+            numTwos++;
+            x /= 2;
+        }
+
+        return numTwos;
+    }
+
+
+    /**
+     * Equivalente da função Python:
+     *
+     * def __early_downsample_count(nyquist, filter_cutoff, hop_length, n_octaves):
+     */
+    public static int earlyDownsampleCount(
+            double nyquist,
+            double filterCutoff,
+            int hopLength,
+            int nOctaves
+    ) {
+
+        int downsampleCount1 = Math.max(
+                0,
+                (int) (Math.ceil(
+                        Math.log(nyquist / filterCutoff) / Math.log(2)
+                ) - 1) - 1
+        );
+
+        int numTwos = numTwoFactors(hopLength);
+
+        int downsampleCount2 = Math.max(
+                0,
+                numTwos - nOctaves + 1
+        );
+
+        return Math.min(downsampleCount1, downsampleCount2);
+    }
+
+
 }
