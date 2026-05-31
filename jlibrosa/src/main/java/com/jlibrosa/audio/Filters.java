@@ -54,7 +54,7 @@ public class Filters {
                 double[] lengths,
                 double fCutoff
         ) {
-            this.lengths = lengths;
+            this.lengths = lengths;wavelet_lengths
             this.fCutoff = fCutoff;
         }
     }

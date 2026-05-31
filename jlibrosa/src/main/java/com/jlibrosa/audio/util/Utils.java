@@ -3,6 +3,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.commons.math3.complex.Complex;
+import org.jtransforms.fft.DoubleFFT_1D;
+
 
 public class Utils {
     
@@ -527,5 +530,28 @@ public class Utils {
         return output;
     }
 
-}
+    public static Complex[] fft(double[] signal, int nFft) {
 
+        DoubleFFT_1D fft = new DoubleFFT_1D(nFft);
+
+        double[] fftBuffer = new double[2 * nFft];
+
+        // zero-padding automático
+        int copyLength = Math.min(signal.length, nFft);
+        System.arraycopy(signal, 0, fftBuffer, 0, copyLength);
+
+        fft.realForwardFull(fftBuffer);
+
+        Complex[] result = new Complex[nFft];
+
+        for (int k = 0; k < nFft; k++) {
+            result[k] = new Complex(
+                fftBuffer[2 * k],
+                fftBuffer[2 * k + 1]
+            );
+        }
+
+        return result;
+    }
+
+}

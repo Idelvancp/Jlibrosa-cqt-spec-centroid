@@ -8,6 +8,9 @@ import org.apache.commons.math3.complex.Complex;
 import java.util.Collection;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
 
 public class Constantq {
 
@@ -183,6 +186,71 @@ public class Constantq {
         );
     }
 
+    public static class FilterResult {
+        public Complex[][] fftBasis;
+        public int nFft;
+        public double[] lengths;
+
+        public FilterResult(Complex[][] fftBasis, int nFft, double[] lengths) {
+            this.fftBasis = fftBasis;
+            this.nFft = nFft;
+            this.lengths = lengths;
+        }
+    }
+
+        public static FilterResult vqtFilterFFT(
+                int sr,
+                double[] freqs,
+                double filterScale,
+                double norm,
+                double sparsity,
+                Integer hopLength,
+                String window,
+                double gamma,
+                Double alpha
+        ) {
+            // 1. Gera filtros no tempo (wavelets)
+            Filters.WaveletLengthsResult wavelet = Filters.waveletLengths(
+                    freqs, sr, filterScale, norm, true, window, gamma, alpha
+            );
+
+            double[][] basis = wavelet.basis;  // filtros no tempo
+            double[] lengths = wavelet.lengths;
+
+            int nFft = basis[0].length;
+
+            // 2. Ajusta tamanho do FFT se hop_length exigir
+            if (hopLength != null) {
+                int minNfft = 1 << (int) Math.ceil(Math.log(hopLength) / Math.log(2) + 1);
+                if (nFft < minNfft) {
+                    nFft = minNfft;
+                }
+            }
+
+            // 3. Re-normaliza
+            for (int i = 0; i < basis.length; i++) {
+                for (int j = 0; j < basis[i].length; j++) {
+                    basis[i][j] *= lengths[i] / (double) nFft;
+                }
+            }
+
+            // 4. FFT dos filtros
+            Complex[][] fftBasis = new Complex[basis.length][];
+            for (int i = 0; i < basis.length; i++) {
+                Complex[] fftRow = Utils.fft(basis[i], nFft);
+                fftBasis[i] =
+                    Arrays.copyOfRange(fftRow, 0, nFft / 2 + 1);
+            }
+
+            // 5. Sparsificação (opcional, pode pular na primeira versão)
+            fftBasis = Utils.sparsifyRows(fftBasis, sparsity);
+
+            return new FilterResult(fftBasis, nFft, lengths);
+        }
+
+
+    
+
 	public static Complex[][] cqt(
 	    double[] y,
 	    int sr,
@@ -312,9 +380,84 @@ public class Constantq {
 			resType = "soxr_hq";
 		}
 		return null;
+
+        // =====================================================
+        // Early downsample
+        // =====================================================
+
+        EarlyDownsampleResult dsResult =
+                earlyDownsample(
+                        y,
+                        sr,
+                        hopLength,
+                        resType,
+                        nOctaves,
+                        nyquist,
+                        filterCutoff,
+                        scale
+                );
+
+        y = dsResult.y;
+        sr = dsResult.sr;
+        hopLength = dsResult.hopLength;
+
+        // =====================================================
+        // vqt_resp = []
+        // =====================================================
+
+        // Em Python será uma lista de respostas por oitava.
+        // Como ainda não sabemos exatamente o que será armazenado,
+        // usamos uma lista genérica de matrizes Complex.
+
+        List<Complex[][]> vqtResp = new ArrayList<>();
+
+        // =====================================================
+        // my_y, my_sr, my_hop = y, sr, hop_length
+        // =====================================================
+
+        double[] myY = y;
+        double mySr = sr;
+        int myHop = hopLength;
+
+        for (int i = 0; i < nOctaves; i++) {
+
+            int start;
+            int end;
+
+            if (i == 0) {
+                start = freqs.length - nFilters;
+                end = freqs.length;
+            } else {
+                start = freqs.length - (nFilters * (i + 1));
+                end = freqs.length - (nFilters * i);
+            }
+
+            // freqs_oct = freqs[sl]
+            double[] freqsOct =
+                    java.util.Arrays.copyOfRange(freqs, start, end);
+
+            // alpha_oct = alpha[sl]
+            double[] alphaOct =
+                    java.util.Arrays.copyOfRange(alpha, start, end);
+
+            VQTFilters.FilterResult result =
+                VQTFilters.vqtFilterFFT(
+                    mySr,
+                    freqsOct,
+                    filterScale,
+                    norm,
+                    sparsity,
+                    null,       // hopLength
+                    window,
+                    gamma,
+                    alphaOct
+                );
+
+            Complex[][] fftBasis = result.fftBasis;
+            int nFft = result.nFft;
+
+        }
 	}
-
-
 
 
 }
